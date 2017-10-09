@@ -1,0 +1,27 @@
+{
+  "name": "reads-graphql",
+  "version": "1.0.0",
+  "description": "Graphql client for good reads api",
+  "main": "serve.js",
+  "scripts": {
+    "start": "node serve.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harsh2602/reads-graphql.git"
+  },
+  "author": "Harsh Khandelwal",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/harsh2602/reads-graphql/issues"
+  },
+  "homepage": "https://github.com/harsh2602/reads-graphql#readme",
+  "dependencies": {
+    "express": "^4.16.1",
+    "express-graphql": "^0.6.11",
+    "graphql": "^0.11.7",
+    "node-fetch": "^1.7.3",
+    "xml2js": "^0.4.19"
+  }
+}
