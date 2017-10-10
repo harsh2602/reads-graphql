@@ -26,6 +26,21 @@ const fetchAuthor = id =>
     .then(response => response.text())
     .then(parseXML);
 
+const fetchBooks = id =>
+  fetch(`https://www.goodreads.com/book/show/${id}.xml?key=${keys.apiKey}`)
+    .then(response => response.text())
+    .then(parseXML);
+
+// Author loader
+const authorLoader = new DataLoader(keys =>
+  Promise.all(keys.map(key => fetchAuthor(key)))
+);
+
+// Books loader
+const bookLoader = new DataLoader(keys =>
+  Promise.all(keys.map(key => fetchBooks(key)))
+);
+
 const BookType = new GraphQLObjectType({
   name: 'Books',
   description: 'Books for the author',
@@ -53,7 +68,7 @@ const BookType = new GraphQLObjectType({
       resolve: xml => {
         const authorElements = xml.GoodreadsResponse.book[0].authors[0].author;
         const ids = authorElements.map(elem => elem.id[0]);
-        return Promise.all(ids.map(id => fetchAuthor(id)));
+        return authorLoader.loadMany(ids);
       }
     }
   })
@@ -74,15 +89,7 @@ const AuthorType = new GraphQLObjectType({
         const ids = xml.GoodreadsResponse.author[0].books[0].book.map(
           elem => elem.id[0]._
         );
-        return Promise.all(
-          ids.map(id =>
-            fetch(
-              `https://www.goodreads.com/book/show/${id}.xml?key=${keys.apiKey}`
-            )
-              .then(response => response.text())
-              .then(parseXML)
-          )
-        );
+        return bookLoader.loadMany(ids);
       }
     }
   })
@@ -98,7 +105,7 @@ module.exports = new GraphQLSchema({
         args: {
           id: { type: GraphQLInt }
         },
-        resolve: (root, args) => fetchAuthor(args.id)
+        resolve: (root, args) => authorLoader.load(args.id)
       }
     })
   })
