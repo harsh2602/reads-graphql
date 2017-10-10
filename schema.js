@@ -1,7 +1,3 @@
-const fetch = require('node-fetch');
-const util = require('util');
-const parseXML = util.promisify(require('xml2js').parseString);
-const DataLoader = require('dataloader');
 const {
   GraphQLSchema,
   GraphQLObjectType,
@@ -10,7 +6,6 @@ const {
   GraphQLString,
   GraphQLList
 } = require('graphql');
-const keys = require('./keys');
 
 const translateLang = (lang, str) => {
   // Google Translate API is a paid (but dirt cheap) service.
@@ -20,26 +15,6 @@ const translateLang = (lang, str) => {
     .then(response => response.json())
     .then(parsedResponse => parsedResponse.data.translations[0].translatedText);
 };
-
-const fetchAuthor = id =>
-  fetch(`https://www.goodreads.com/author/show.xml?id=${id}&key=${keys.apiKey}`)
-    .then(response => response.text())
-    .then(parseXML);
-
-const fetchBooks = id =>
-  fetch(`https://www.goodreads.com/book/show/${id}.xml?key=${keys.apiKey}`)
-    .then(response => response.text())
-    .then(parseXML);
-
-// Author loader
-const authorLoader = new DataLoader(keys =>
-  Promise.all(keys.map(key => fetchAuthor(key)))
-);
-
-// Books loader
-const bookLoader = new DataLoader(keys =>
-  Promise.all(keys.map(key => fetchBooks(key)))
-);
 
 const BookType = new GraphQLObjectType({
   name: 'Books',
@@ -65,10 +40,10 @@ const BookType = new GraphQLObjectType({
     },
     authors: {
       type: new GraphQLList(AuthorType),
-      resolve: xml => {
+      resolve: (xml, args, context) => {
         const authorElements = xml.GoodreadsResponse.book[0].authors[0].author;
         const ids = authorElements.map(elem => elem.id[0]);
-        return authorLoader.loadMany(ids);
+        return context.authorLoader.loadMany(ids);
       }
     }
   })
@@ -85,11 +60,11 @@ const AuthorType = new GraphQLObjectType({
     books: {
       type: new GraphQLList(BookType),
       // Imitating lazy fetching using the books API
-      resolve: xml => {
+      resolve: (xml, args, context) => {
         const ids = xml.GoodreadsResponse.author[0].books[0].book.map(
           elem => elem.id[0]._
         );
-        return bookLoader.loadMany(ids);
+        return context.bookLoader.loadMany(ids);
       }
     }
   })
@@ -105,7 +80,7 @@ module.exports = new GraphQLSchema({
         args: {
           id: { type: GraphQLInt }
         },
-        resolve: (root, args) => authorLoader.load(args.id)
+        resolve: (root, args, context) => context.authorLoader.load(args.id)
       }
     })
   })
