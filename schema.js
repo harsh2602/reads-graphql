@@ -9,7 +9,16 @@ const {
   GraphQLString,
   GraphQLList
 } = require('graphql');
-const keys = require('./keys.js');
+const keys = require('./keys');
+
+function translateLang(lang, str) {
+  // Google Translate API is a paid (but dirt cheap) service.
+  // To generate your own API key, go here: https://cloud.google.com/translate/v2/getting_started
+  const url = `https://www.googleapis.com/language/translate/v2?key=${keys.googleTransalateApiKey}&source=en&target=${lang}&q=encodeURIComponent(${str})`;
+  return fetch(url)
+    .then(response => response.json())
+    .then(parsedResponse => parsedResponse.data.translations[0].translatedText);
+}
 
 const BookType = new GraphQLObjectType({
   name: 'Books',
@@ -17,7 +26,13 @@ const BookType = new GraphQLObjectType({
   fields: () => ({
     title: {
       type: GraphQLString,
-      resolve: xml => xml.GoodreadsResponse.book[0].title[0]
+      args: {
+        lang: { type: GraphQLString }
+      }
+      resolve: (xml, args) => {
+        const title = xml.GoodreadsResponse.book[0].title[0]
+        return args.lang ? translateLang(args.lang, title) : title
+      }
     },
     isbn: {
       type: GraphQLString,
